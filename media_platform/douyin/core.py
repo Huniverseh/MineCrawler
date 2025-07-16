@@ -42,12 +42,6 @@ class DouYinCrawler(AbstractCrawler):
         self.index_url = "https://www.douyin.com"
         self.cdp_manager = None
 
-########################################<My Code -- START>#################################################
-
-
-
-########################################<My Code -- END>#################################################
-
     async def start(self) -> None:
         playwright_proxy_format, httpx_proxy_format = None, None
         if config.ENABLE_IP_PROXY:
@@ -99,8 +93,83 @@ class DouYinCrawler(AbstractCrawler):
             elif config.CRAWLER_TYPE == "creator":
                 # Get the information and comments of the specified creator
                 await self.get_creators_and_videos()
+            elif config.CRAWLER_TYPE == "MyWorkflow":
+                # 个人工作流，当前任务：获取指定主题视频下评论区用户信息提取
+                await self.H_fetch_aweme_comment_user_info()
 
             utils.logger.info("[DouYinCrawler.start] Douyin Crawler finished ...")
+
+
+########################################<My Code -- START>#################################################
+    async def H_fetch_aweme_comment_user_info(self) -> None:
+        """
+        根据指定主题，筛选出相关视频评论区下目标用户，提取用户个人信息，包括不限于个人信息、发布内容，以及“关注”“粉丝”列表等
+
+        关键变量(均已提前在config中声明)
+        Args:
+            H_AWEME_KEYWORDS: 抖音视频关键词，以英文逗号,间隔
+            H_AWEME_ID_LIST: 抖音视频"aweme_id"列表
+        """
+        if config.H_FETCH_BY_KEYWORDS:
+            aweme_list = await self.H_search_aweme_ids()
+        else:
+            aweme_list = config.H_AWEME_ID_LIST
+        
+        pass
+
+    
+    async def H_search_aweme_ids(self) -> List[str]:
+        """return aweme_id list, according to config variable **HYH_AWEME_KEYWORDS**."""
+        utils.logger.info("[DouYinCrawler.H_search_aweme_ids] Begin search douyin keywords")
+        dy_limit_count = 10  # douyin limit page fixed value
+        if config.CRAWLER_MAX_NOTES_COUNT < dy_limit_count:
+            config.CRAWLER_MAX_NOTES_COUNT = dy_limit_count
+        start_page = config.START_PAGE  # start page number
+        for keyword in config.H_AWEME_KEYWORDS.split(","):
+            source_keyword_var.set(keyword)
+            utils.logger.info(f"[DouYinCrawler.H_search_aweme_ids] Current keyword: {keyword}")
+            aweme_list: List[str] = []
+            page = 0
+            dy_search_id = ""
+            while (page - start_page + 1) * dy_limit_count <= config.CRAWLER_MAX_NOTES_COUNT:
+                if page < start_page:
+                    utils.logger.info(f"[DouYinCrawler.H_search_aweme_ids] Skip {page}")
+                    page += 1
+                    continue
+                try:
+                    utils.logger.info(f"[DouYinCrawler.H_search_aweme_ids] search douyin keyword: {keyword}, page: {page}")
+                    posts_res = await self.dy_client.search_info_by_keyword(keyword=keyword,
+                                                                            offset=page * dy_limit_count - dy_limit_count,
+                                                                            publish_time=PublishTimeType(config.PUBLISH_TIME_TYPE),
+                                                                            search_id=dy_search_id
+                                                                            )
+                    if posts_res.get("data") is None or posts_res.get("data") == []:
+                        utils.logger.info(f"[DouYinCrawler.H_search_aweme_ids] search douyin keyword: {keyword}, page: {page} is empty,{posts_res.get('data')}`")
+                        break
+                except DataFetchError:
+                    utils.logger.error(f"[DouYinCrawler.H_search_aweme_ids] search douyin keyword: {keyword} failed")
+                    break
+
+                page += 1
+                if "data" not in posts_res:
+                    utils.logger.error(
+                        f"[DouYinCrawler.H_search_aweme_ids] search douyin keyword: {keyword} failed，账号也许被风控了。")
+                    break
+                dy_search_id = posts_res.get("extra", {}).get("logid", "")
+                for post_item in posts_res.get("data"):
+                    try:
+                        aweme_info: Dict = post_item.get("aweme_info") or \
+                                           post_item.get("aweme_mix_info", {}).get("mix_items")[0]
+                    except TypeError:
+                        continue
+                    aweme_list.append(aweme_info.get("aweme_id", ""))
+                    # await douyin_store.update_douyin_aweme(aweme_item=aweme_info)
+            utils.logger.info(f"[DouYinCrawler.H_search_aweme_ids] keyword:{keyword}, aweme_list:{aweme_list}")
+            return aweme_list
+
+
+
+########################################<My Code -- END>#################################################
 
     async def search(self) -> None:
         utils.logger.info("[DouYinCrawler.search] Begin search douyin keywords")

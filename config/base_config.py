@@ -9,9 +9,20 @@
 # 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
 
 
+###############################<My Config -- START>######################################
+H_FETCH_BY_KEYWORDS = True  # 是否使用关键词H_AWEME_KEYWORDS，“否”则使用H_AWEME_ID_LIST
+H_AWEME_KEYWORDS = "F1：狂飙飞车"
+H_AWEME_ID_LIST = [
+    "7520839637405830410",
+    "7511544747800349986",
+]
+
+
+###############################<My Config -- END>########################################
+
 # 基础配置
-PLATFORM = "xhs"
-KEYWORDS = "编程副业,编程兼职"  # 关键词搜索配置，以英文逗号分隔
+PLATFORM = "dy"
+KEYWORDS = "F1：狂飙飞车,Mac键盘"  # 关键词搜索配置，以英文逗号分隔
 LOGIN_TYPE = "qrcode"  # qrcode or phone or cookie
 COOKIES = ""
 # 具体值参见media_platform.xxx.field下的枚举值，暂时只支持小红书
@@ -24,7 +35,7 @@ CRAWLER_TYPE = (
 # 微博搜索类型 default (综合) | real_time (实时) | popular (热门) | video (视频)
 WEIBO_SEARCH_TYPE = "popular"
 # 自定义User Agent（暂时仅对XHS有效）
-UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 
 # 是否开启 IP 代理
 ENABLE_IP_PROXY = False
@@ -84,7 +95,7 @@ USER_DATA_DIR = "%s_user_data_dir"  # %s will be replaced by platform name
 START_PAGE = 1
 
 # 爬取视频/帖子的数量控制
-CRAWLER_MAX_NOTES_COUNT = 200
+CRAWLER_MAX_NOTES_COUNT = 15
 
 # 并发爬虫数量控制
 MAX_CONCURRENCY_NUM = 1
