@@ -115,7 +115,7 @@ class DouYinCrawler(AbstractCrawler):
         else:
             aweme_list = config.H_AWEME_ID_LIST
         
-        pass
+        print(aweme_list)
 
     
     async def H_search_aweme_ids(self) -> List[str]:
@@ -167,6 +167,70 @@ class DouYinCrawler(AbstractCrawler):
             utils.logger.info(f"[DouYinCrawler.H_search_aweme_ids] keyword:{keyword}, aweme_list:{aweme_list}")
             return aweme_list
 
+    async def H_batch_get_note_comments(self, aweme_list: List[str]) -> None:
+        """
+        Batch get note comments, then return the comment users' id list.
+        """
+        if not config.ENABLE_GET_COMMENTS:
+            utils.logger.info(f"[DouYinCrawler.H_batch_get_note_comments] Crawling comment mode is not enabled")
+            return
+
+        task_list: List[Task] = []
+        semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
+        for aweme_id in aweme_list:
+            task = asyncio.create_task(
+                self.H_get_comments(aweme_id, semaphore), name=aweme_id)
+            task_list.append(task)
+        if len(task_list) > 0:
+            await asyncio.wait(task_list)
+
+    async def H_filter_user_by_comment(self, aweme_id: str, comments: List[Dict]) -> None:
+        """根据评论内容，筛选出用户，并定义实例列表"""
+        if not comments:
+            return
+        
+        # 比较危险，每次爬取评论，这个实例属性都会被清空，因此需要实时更新保存至文件中，需要写update方法
+        self._user_list: List[Dict[str, Any]] = []  # 定义实例列表
+        for comment_item in comments:
+            comment_aweme_id = comment_item.get("aweme_id")
+            if aweme_id != comment_aweme_id:
+                utils.logger.error(
+                    f"[store.douyin.update_dy_aweme_comment] comment_aweme_id: {comment_aweme_id} != aweme_id: {aweme_id}"
+                )
+                continue
+            user_info = comment_item.get("user", {})
+            save_comment_user_item = {
+                "aweme_id": aweme_id,
+                "content": comment_item.get("text"),
+                "user_id": user_info.get("uid"),
+                "sec_uid": user_info.get("sec_uid"),
+                "short_user_id": user_info.get("short_id"),
+                "user_unique_id": user_info.get("unique_id"),
+                "user_signature": user_info.get("signature"),
+                "nickname": user_info.get("nickname"),
+                "like_count": (
+                    comment_item.get("digg_count") if comment_item.get("digg_count") else 0
+                ),
+                "last_modify_ts": utils.get_current_timestamp(),
+            }
+            self.user_list.append(save_comment_user_item)
+
+
+    async def H_get_comments(self, aweme_id: str, semaphore: asyncio.Semaphore) -> None:
+        async with semaphore:
+            try:
+                # 将关键词列表传递给 get_aweme_all_comments 方法
+                await self.dy_client.get_aweme_all_comments(
+                    aweme_id=aweme_id,
+                    crawl_interval=random.random(),
+                    is_fetch_sub_comments=config.ENABLE_GET_SUB_COMMENTS,
+                    callback=self.H_filter_user_by_comment,
+                    max_count=config.CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES
+                )
+                utils.logger.info(
+                    f"[DouYinCrawler.H_get_comments] aweme_id: {aweme_id} comments have all been obtained and filtered ...")
+            except DataFetchError as e:
+                utils.logger.error(f"[DouYinCrawler.H_get_comments] aweme_id: {aweme_id} get comments failed, error: {e}")
 
 
 ########################################<My Code -- END>#################################################
