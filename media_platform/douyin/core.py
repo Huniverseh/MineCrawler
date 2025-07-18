@@ -190,6 +190,8 @@ class DouYinCrawler(AbstractCrawler):
             return
         
         # 比较危险，每次爬取评论，这个实例属性都会被清空，因此需要实时更新保存至文件中，需要写update方法
+        # 或者比较好的方法是，定义一个列表属性，保存所有的用户id
+        # 或者在H_get_comments最后返回get_aweme_all_comments的结果(result)
         self._user_list: List[Dict[str, Any]] = []  # 定义实例列表
         for comment_item in comments:
             comment_aweme_id = comment_item.get("aweme_id")
@@ -213,7 +215,7 @@ class DouYinCrawler(AbstractCrawler):
                 ),
                 "last_modify_ts": utils.get_current_timestamp(),
             }
-            self.user_list.append(save_comment_user_item)
+            self._user_list.append(save_comment_user_item)
 
 
     async def H_get_comments(self, aweme_id: str, semaphore: asyncio.Semaphore) -> None:
