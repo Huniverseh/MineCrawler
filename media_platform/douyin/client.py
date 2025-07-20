@@ -320,3 +320,74 @@ class DOUYINClient(AbstractApiClient):
                 await callback(aweme_list)
             result.extend(aweme_list)
         return result
+
+########################################<My Code -- START>#################################################    
+    # 获取所有关注列表
+    async def H_get_all_followings(self, sec_user_id: str):
+        max_time = 0
+        has_more = True
+        following_profile_list = []
+        while has_more:
+            res = await self.H_get_user_following_list(sec_user_id, max_time=max_time)
+            user_list = res.get("followings", [])
+            for user_raw in user_list:
+                user_parsed = self.H_parse_user_profile(user_raw)
+                following_profile_list.append(user_parsed)
+            has_more = res.get("has_more", False)
+            max_time = res.get("min_time", 0)
+        return following_profile_list
+
+    # 获取所有粉丝列表
+    async def H_get_all_followers(self, sec_user_id: str):
+        max_time = 0
+        has_more = True
+        follower_profile_list = []
+        while has_more:
+            res = await self.H_get_user_follower_list(sec_user_id, max_time=max_time)
+            user_list = res.get("followers", [])
+            for user_raw in user_list:
+                user_parsed = self.H_parse_user_profile(user_raw)
+                follower_profile_list.append(user_parsed)
+            has_more = res.get("has_more", False)
+            max_time = res.get("min_time", 0)
+        return follower_profile_list
+
+    async def H_get_user_following_list(self, sec_user_id: str, max_time: int = 0) -> Dict:
+        uri = "/aweme/v1/web/user/following/list/"
+        params = {
+            "sec_user_id": sec_user_id,
+            "count": 20,
+            "max_time": str(max_time)
+        }
+        return await self.get(uri, params)
+
+    async def H_get_user_follower_list(self, sec_user_id: str, max_time: int = 0) -> Dict:
+        uri = "/aweme/v1/web/user/follower/list/"
+        params = {
+            "sec_user_id": sec_user_id,
+            "count": 20,
+            "max_time": str(max_time)
+        }
+        return await self.get(uri, params)
+
+    # 解析响应用户内容，返回包含指定字段的字典
+    def H_parse_user_profile(self, user: dict) -> dict:
+        return {
+            "sec_uid": user.get("sec_uid"),
+            "uid": user.get("uid"),
+            "nickname": user.get("nickname"),
+            "unique_id": user.get("unique_id"),
+            "signature": user.get("signature"),
+            "follower_count": user.get("follower_count"),
+            "following_count": user.get("following_count"),
+            "total_favorited": user.get("total_favorited"),
+            "aweme_count": user.get("aweme_count"),
+            "is_verified": user.get("is_verified"),
+            "avatar_url": user.get("avatar_larger", {}).get("url_list", [None])[0],
+            "create_time": user.get("create_time"),
+            "language": user.get("language"),
+            "constellation": user.get("constellation")
+        }
+
+########################################<My Code -- END>#################################################
+ 

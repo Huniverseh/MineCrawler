@@ -215,3 +215,13 @@ async def save_creator(user_id: str, creator: Dict):
     }
     utils.logger.info(f"[store.douyin.save_creator] creator:{local_db_item}")
     await DouyinStoreFactory.create_store().store_creator(local_db_item)
+
+
+########################################<My Code -- START>#################################################    
+async def H_update_followers(followers: Dict):
+    await DouyinStoreFactory.create_store().H_store_followers(followers)
+
+async def H_update_followings(followings: Dict):
+    await DouyinStoreFactory.create_store().H_store_followings(followings)
+########################################<My Code -- END>#################################################
+ 

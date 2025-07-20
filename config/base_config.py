@@ -10,11 +10,17 @@
 
 
 ###############################<My Config -- START>######################################
-H_FETCH_BY_KEYWORDS = True  # 是否使用关键词H_AWEME_KEYWORDS，“否”则使用H_AWEME_ID_LIST
+H_FETCH_BY_KEYWORDS = True  # 是否使用关键词H_AWEME_KEYWORDS搜索，“否”则使用H_AWEME_ID_LIST
 H_AWEME_KEYWORDS = "F1：狂飙飞车"
 H_AWEME_ID_LIST = [
     "7520839637405830410",
     "7511544747800349986",
+]
+H_USE_COMMENT_FILTER = True # 是否启用评论过滤器
+H_FILTER_WORDS = [    # 过滤关键词列表（如果在内，则保留）
+    "f1",
+    "F1",
+    "皮特",
 ]
 ###############################<My Config -- END>########################################
 
@@ -177,7 +183,9 @@ XHS_CREATOR_ID_LIST = [
 
 # 指定Dy创作者ID列表(sec_id)
 DY_CREATOR_ID_LIST = [
-    "MS4wLjABAAAATJPY7LAlaa5X-c8uNdWkvz0jUGgpw4eeXIwu_8BhvqE",
+    "MS4wLjABAAAAwTrxcwib3f_J3djQQDkrqKZm_-X_DxJt_2BYiddCk3bBr7J9H422b1ByWrqeMGpq",
+    # "MS4wLjABAAAA7X9H7wUvOVRdnxencPyg-1ZoDO3lLt8OlQfm8u5YZ85CRIaey1Re57I0XRXO7qy-",
+    # "MS4wLjABAAAATJPY7LAlaa5X-c8uNdWkvz0jUGgpw4eeXIwu_8BhvqE",
     # ........................
 ]
 

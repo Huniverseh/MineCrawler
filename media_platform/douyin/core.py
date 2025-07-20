@@ -110,16 +110,35 @@ class DouYinCrawler(AbstractCrawler):
             H_AWEME_KEYWORDS: 抖音视频关键词，以英文逗号,间隔
             H_AWEME_ID_LIST: 抖音视频"aweme_id"列表
         """
-        if config.H_FETCH_BY_KEYWORDS:
-            aweme_list = await self.H_search_aweme_ids()
-        else:
-            aweme_list = config.H_AWEME_ID_LIST
-        
-        print(aweme_list)
+        # if config.H_FETCH_BY_KEYWORDS:
+        #     aweme_list = await self.H_search_aweme_ids()
+        # else:
+        #     aweme_list = config.H_AWEME_ID_LIST
 
-    
+        # await self.H_batch_get_note_comments(aweme_list)
+
+        # import json
+        # with open("output.json", "w", encoding="utf-8") as f:
+        #     json.dump(self._user_info_list, f, indent=2, ensure_ascii=False)
+
+        user_sec_id_list = config.DY_CREATOR_ID_LIST
+        for sec_user_id in user_sec_id_list:
+            user_follower: Dict = await self.dy_client.H_get_all_followers(sec_user_id)
+            if user_follower:
+                store_content = {
+                    "user_sec_id": sec_user_id,
+                    "followers": user_follower
+                }
+
+                await douyin_store.H_update_followers(store_content)
+
+                # import json
+                # with open("output_user_id.json", "w", encoding="utf-8") as f:
+                #     json.dump(store_content, f, indent=2, ensure_ascii=False)
+
+
     async def H_search_aweme_ids(self) -> List[str]:
-        """return aweme_id list, according to config variable **HYH_AWEME_KEYWORDS**."""
+        """return aweme_id list, according to config variable **H_AWEME_KEYWORDS**."""
         utils.logger.info("[DouYinCrawler.H_search_aweme_ids] Begin search douyin keywords")
         dy_limit_count = 10  # douyin limit page fixed value
         if config.CRAWLER_MAX_NOTES_COUNT < dy_limit_count:
@@ -169,12 +188,13 @@ class DouYinCrawler(AbstractCrawler):
 
     async def H_batch_get_note_comments(self, aweme_list: List[str]) -> None:
         """
-        Batch get note comments, then return the comment users' id list.
+        批量获取视频评论，并将评论的用户id，保存至定义好的实例列表变量中。
         """
         if not config.ENABLE_GET_COMMENTS:
             utils.logger.info(f"[DouYinCrawler.H_batch_get_note_comments] Crawling comment mode is not enabled")
             return
 
+        self._user_info_list: List[Dict[str, Any]] = []  # 定义实例列表，存放用户id
         task_list: List[Task] = []
         semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
         for aweme_id in aweme_list:
@@ -184,20 +204,41 @@ class DouYinCrawler(AbstractCrawler):
         if len(task_list) > 0:
             await asyncio.wait(task_list)
 
+    async def H_get_comments(self, aweme_id: str, semaphore: asyncio.Semaphore) -> None:
+        async with semaphore:
+            try:
+                # 将关键词列表传递给 get_aweme_all_comments 方法
+                await self.dy_client.get_aweme_all_comments(
+                    aweme_id=aweme_id,
+                    crawl_interval=random.random(),
+                    is_fetch_sub_comments=config.ENABLE_GET_SUB_COMMENTS,
+                    callback=self.H_filter_user_by_comment,
+                    max_count=config.CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES
+                )
+                utils.logger.info(
+                    f"[DouYinCrawler.H_get_comments] aweme_id: {aweme_id} comments have all been obtained and filtered ...")
+            except DataFetchError as e:
+                utils.logger.error(f"[DouYinCrawler.H_get_comments] aweme_id: {aweme_id} get comments failed, error: {e}")
+
     async def H_filter_user_by_comment(self, aweme_id: str, comments: List[Dict]) -> None:
-        """根据评论内容，筛选出用户，并定义实例列表"""
+        """根据评论内容，筛选出用户，保存至在H_batch_get_note_comments定义的实例用户id列表中"""
         if not comments:
             return
         
-        # 比较危险，每次爬取评论，这个实例属性都会被清空，因此需要实时更新保存至文件中，需要写update方法
-        # 或者比较好的方法是，定义一个列表属性，保存所有的用户id
-        # 或者在H_get_comments最后返回get_aweme_all_comments的结果(result)
-        self._user_list: List[Dict[str, Any]] = []  # 定义实例列表
         for comment_item in comments:
+            # 过滤逻辑
+            comment_content = comment_item.get("text")
+            if not any (kw in comment_content for kw in config.H_FILTER_WORDS):
+                utils.logger.info(
+                    f"[DouYinCrawler.H_filter_user_by_comment] comment_content doesn't have any keyword"
+                )
+                continue
+            print(comment_item)
+
             comment_aweme_id = comment_item.get("aweme_id")
             if aweme_id != comment_aweme_id:
                 utils.logger.error(
-                    f"[store.douyin.update_dy_aweme_comment] comment_aweme_id: {comment_aweme_id} != aweme_id: {aweme_id}"
+                    f"[DouYinCrawler.H_filter_user_by_comment] comment_aweme_id: {comment_aweme_id} != aweme_id: {aweme_id}"
                 )
                 continue
             user_info = comment_item.get("user", {})
@@ -215,24 +256,7 @@ class DouYinCrawler(AbstractCrawler):
                 ),
                 "last_modify_ts": utils.get_current_timestamp(),
             }
-            self._user_list.append(save_comment_user_item)
-
-
-    async def H_get_comments(self, aweme_id: str, semaphore: asyncio.Semaphore) -> None:
-        async with semaphore:
-            try:
-                # 将关键词列表传递给 get_aweme_all_comments 方法
-                await self.dy_client.get_aweme_all_comments(
-                    aweme_id=aweme_id,
-                    crawl_interval=random.random(),
-                    is_fetch_sub_comments=config.ENABLE_GET_SUB_COMMENTS,
-                    callback=self.H_filter_user_by_comment,
-                    max_count=config.CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES
-                )
-                utils.logger.info(
-                    f"[DouYinCrawler.H_get_comments] aweme_id: {aweme_id} comments have all been obtained and filtered ...")
-            except DataFetchError as e:
-                utils.logger.error(f"[DouYinCrawler.H_get_comments] aweme_id: {aweme_id} get comments failed, error: {e}")
+            self._user_info_list.append(save_comment_user_item)
 
 
 ########################################<My Code -- END>#################################################

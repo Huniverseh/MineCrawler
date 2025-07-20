@@ -217,7 +217,7 @@ class DouyinJsonStoreImplement(AbstractStore):
 
             save_data.append(save_item)
             async with aiofiles.open(save_file_name, 'w', encoding='utf-8') as file:
-                await file.write(json.dumps(save_data, ensure_ascii=False))
+                await file.write(json.dumps(save_data, ensure_ascii=False, indent=2))
 
             if config.ENABLE_GET_COMMENTS and config.ENABLE_GET_WORDCLOUD:
                 try:
@@ -258,6 +258,15 @@ class DouyinJsonStoreImplement(AbstractStore):
 
         """
         await self.save_data_to_json(save_item=creator, store_type="creator")
+
+########################################<My Code -- START>#################################################    
+    async def H_store_followers(self, followers: Dict):
+        await self.save_data_to_json(save_item=followers, store_type="followers")
+
+    async def H_store_followings(self, followings: Dict):
+        await self.save_data_to_json(save_item=followings, store_type="followings")
+########################################<My Code -- END>#################################################
+
 
 
 class DouyinSqliteStoreImplement(AbstractStore):
