@@ -103,29 +103,34 @@ class DouYinCrawler(AbstractCrawler):
 ########################################<My Code -- START>#################################################
     async def H_fetch_aweme_comment_user_info(self) -> None:
         """
-        根据指定主题，筛选出相关视频评论区下目标用户，提取用户个人信息，包括不限于个人信息、发布内容，以及“关注”“粉丝”列表等
+        可指定主题关键词然后搜索视频、或直接给出视频列表，筛选出视频评论区里的目标用户，提取用户个人信息，包括不限于个人信息、发布内容，以及“关注”“粉丝”列表等
 
         关键变量(均已提前在config中声明)
         Args:
+            H_FETCH_BY_KEYWORDS: 是否使用关键词搜索，否则使用H_AWEME_ID_LIST
             H_AWEME_KEYWORDS: 抖音视频关键词，以英文逗号,间隔
             H_AWEME_ID_LIST: 抖音视频"aweme_id"列表
         """
-        # if config.H_FETCH_BY_KEYWORDS:
-        #     aweme_list = await self.H_search_aweme_ids()
-        # else:
-        #     aweme_list = config.H_AWEME_ID_LIST
+        if config.H_FETCH_BY_KEYWORDS:
+            aweme_list = await self.H_search_aweme_ids()
+        else:
+            aweme_list = config.H_AWEME_ID_LIST
 
-        # await self.H_batch_get_note_comments(aweme_list)
+        await self.H_batch_get_note_comments(aweme_list)
 
         # import json
         # with open("output.json", "w", encoding="utf-8") as f:
         #     json.dump(self._user_info_list, f, indent=2, ensure_ascii=False)
 
-        user_sec_id_list = config.DY_CREATOR_ID_LIST
-        for sec_user_id in user_sec_id_list:
+        # self._user_info_list存放着爬取到的评论用户信息
+
+        for comment_user_info in self._user_info_list:
+            sec_user_id = comment_user_info.sec_uid
+            user_nickname = comment_user_info.nickname
             user_follower: Dict = await self.dy_client.H_get_all_followers(sec_user_id)
             if user_follower:
                 store_content = {
+                    "user_nickname": user_nickname,
                     "user_sec_id": sec_user_id,
                     "followers": user_follower
                 }
